@@ -10,6 +10,7 @@ import com.lpg3.projeto1.services.exceptions.DatabaseException;
 import com.lpg3.projeto1.services.exceptions.ResourceNotFoundException;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -20,6 +21,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.lpg3.projeto1.dto.UserInsertDTO;
+import com.lpg3.projeto1.dto.UserUpdateDTO;
 
 import java.util.List;
 
@@ -89,5 +91,30 @@ public class UserService implements UserDetailsService {
 
 	    user = repository.save(user);
 	    return new UserDTO(user);
+	}
+	
+	@Transactional
+	public UserDTO update(Long id, UserUpdateDTO dto) {
+	    User user = repository.findById(id)
+	            .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado: " + id));
+
+	    user.setName(dto.getName());
+	    user.setPhone(dto.getPhone());
+	    user.setBirthDate(dto.getBirthDate());
+
+	    user = repository.save(user);
+	    return new UserDTO(user);
+	}
+
+	@Transactional
+	public void delete(Long id) {
+	    if (!repository.existsById(id)) {
+	        throw new ResourceNotFoundException("Usuário não encontrado: " + id);
+	    }
+	    try {
+	        repository.deleteById(id);
+	    } catch (DataIntegrityViolationException e) {
+	        throw new DatabaseException("Não é possível excluir usuário com vínculos ativos");
+	    }
 	}
 }
