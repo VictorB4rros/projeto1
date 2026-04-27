@@ -13,6 +13,8 @@ import com.lpg3.projeto1.services.exceptions.ResourceNotFoundException;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -72,6 +74,12 @@ public class UserService implements UserDetailsService {
 	public UserDTO getMe() {
 		User user = authenticated();
 		return new UserDTO(user);
+	}
+
+	@Transactional(readOnly = true)
+	public Page<UserDTO> findAll(Pageable pageable) {
+		Page<User> result = repository.findAll(pageable);
+		return result.map(x -> new UserDTO(x));
 	}
 
 	@Transactional(readOnly = true)
