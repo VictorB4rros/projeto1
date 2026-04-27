@@ -35,7 +35,15 @@ public class UserController {
 		UserDTO dto =  service.getMe();
 		return ResponseEntity.ok(dto);
 	}
-	
+
+	@PreAuthorize("hasRole('ROLE_ADMIN')")
+	@GetMapping(value = "/{id}")
+	public ResponseEntity<UserDTO> findById(@PathVariable Long id) {
+		UserDTO dto =  service.findById(id);
+		return ResponseEntity.ok(dto);
+	}
+
+	@PreAuthorize("hasRole('ROLE_ADMIN')")
 	@PostMapping
 	public ResponseEntity<UserDTO> insert(@Valid @RequestBody UserInsertDTO dto) {
 	    UserDTO result = service.insert(dto);

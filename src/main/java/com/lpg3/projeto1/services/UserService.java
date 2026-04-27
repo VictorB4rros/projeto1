@@ -1,5 +1,6 @@
 package com.lpg3.projeto1.services;
 
+import com.lpg3.projeto1.dto.RoleDTO;
 import com.lpg3.projeto1.dto.UserDTO;
 import com.lpg3.projeto1.entities.Role;
 import com.lpg3.projeto1.entities.User;
@@ -9,6 +10,7 @@ import com.lpg3.projeto1.repositories.UserRepository;
 import com.lpg3.projeto1.services.exceptions.DatabaseException;
 import com.lpg3.projeto1.services.exceptions.ResourceNotFoundException;
 
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.Authentication;
@@ -42,7 +44,7 @@ public class UserService implements UserDetailsService {
 	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
 		List<UserDetailsProjection> result = repository.searchUserAndRolesByEmail(username);
 		if (result.size() == 0) {
-			throw new UsernameNotFoundException("Email not found.");
+			throw new UsernameNotFoundException("Email não encontrado");
 		}
 		User user = new User();
 		user.setEmail(result.get(0).getUsername());
@@ -62,7 +64,7 @@ public class UserService implements UserDetailsService {
 			User user = repository.findByEmail(username).get();
 			return user;
 		} catch (Exception e) {
-			throw new UsernameNotFoundException("Email not found");
+			throw new UsernameNotFoundException("Email não encontrado");
 		}
 	}
 	
@@ -71,39 +73,33 @@ public class UserService implements UserDetailsService {
 		User user = authenticated();
 		return new UserDTO(user);
 	}
+
+	@Transactional(readOnly = true)
+	public UserDTO findById(Long id) {
+		User entity = repository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Recurso não encontrado"));
+		return new UserDTO(entity);
+	}
 	
 	@Transactional
 	public UserDTO insert(UserInsertDTO dto) {
-	    if (repository.findByEmail(dto.getEmail()).isPresent()) {
-	        throw new DatabaseException("Email já cadastrado: " + dto.getEmail());
-	    }
-
-	    User user = new User();
-	    user.setName(dto.getName());
-	    user.setEmail(dto.getEmail());
-	    user.setPhone(dto.getPhone());
-	    user.setBirthDate(dto.getBirthDate());
-	    user.setPassword(passwordEncoder.encode(dto.getPassword()));
-
-	    Role role = roleRepository.findByAuthority("ROLE_CLIENT")
-	            .orElseThrow(() -> new ResourceNotFoundException("Role padrão não encontrada"));
-	    user.addRole(role);
-
-	    user = repository.save(user);
-	    return new UserDTO(user);
+		User entity = new User();
+		copyDtoToEntity(dto, entity);
+		entity.setPassword(passwordEncoder.encode(dto.getPassword()));
+		entity = repository.save(entity);
+		return new UserDTO(entity);
 	}
 	
 	@Transactional
 	public UserDTO update(Long id, UserUpdateDTO dto) {
-	    User user = repository.findById(id)
-	            .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado: " + id));
-
-	    user.setName(dto.getName());
-	    user.setPhone(dto.getPhone());
-	    user.setBirthDate(dto.getBirthDate());
-
-	    user = repository.save(user);
-	    return new UserDTO(user);
+		try {
+			User entity = repository.getReferenceById(id);
+			copyDtoToEntity(dto, entity);
+			entity = repository.save(entity);
+			return new UserDTO(entity);
+		}
+		catch (EntityNotFoundException e) {
+			throw new ResourceNotFoundException("Recurso não encontrado");
+		}
 	}
 
 	@Transactional
@@ -116,5 +112,18 @@ public class UserService implements UserDetailsService {
 	    } catch (DataIntegrityViolationException e) {
 	        throw new DatabaseException("Não é possível excluir usuário com vínculos ativos");
 	    }
+	}
+
+	private void copyDtoToEntity(UserDTO dto, User entity) {
+		entity.setName(dto.getName());
+		entity.setEmail(dto.getEmail());
+		entity.setPhone(dto.getPhone());
+		entity.setBirthDate(dto.getBirthDate());
+
+		entity.getRoles().clear();
+		for (RoleDTO roleDto : dto.getRoles()) {
+			Role role = roleRepository.getReferenceById(roleDto.getId());
+			entity.getRoles().add(role);
+		}
 	}
 }

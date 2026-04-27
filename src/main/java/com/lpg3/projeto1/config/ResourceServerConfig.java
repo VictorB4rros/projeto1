@@ -45,21 +45,9 @@ public class ResourceServerConfig {
 
 		http.csrf(csrf -> csrf.disable());
 		http.authorizeHttpRequests(authorize -> authorize
-				.requestMatchers(HttpMethod.POST, "/auth/recover-token").permitAll()
-				.requestMatchers(HttpMethod.POST, "/auth/recover-password").permitAll()
-				.requestMatchers(HttpMethod.POST, "/auth/new-password").permitAll()
-				.requestMatchers(HttpMethod.POST, "/auth/upload-users/**").hasRole("ADMIN")
-				.requestMatchers(HttpMethod.GET, "/auth/download/**").hasRole("ADMIN")
-				.requestMatchers(HttpMethod.GET, "/auth/resend-email/**").hasRole("ADMIN")
-				.requestMatchers(HttpMethod.GET, "/log/**").hasRole("ADMIN")
-				.requestMatchers(HttpMethod.GET, "/users/table").hasRole("ADMIN")
+				.requestMatchers(HttpMethod.POST, "/users").hasRole("ADMIN")
 				.requestMatchers(HttpMethod.PUT, "/users/**").hasRole("ADMIN")
 				.requestMatchers(HttpMethod.DELETE, "/users/**").hasRole("ADMIN")
-				.requestMatchers(HttpMethod.GET, "/printers/approve/**").hasRole("ADMIN")
-				.requestMatchers(HttpMethod.PUT, "/printers/**").hasRole("ADMIN")
-				.requestMatchers(HttpMethod.DELETE, "/printers/**").hasRole("ADMIN")
-				.requestMatchers(HttpMethod.POST, "/users").permitAll()
-				
 				.anyRequest().authenticated());
 				
 		http.oauth2ResourceServer(oauth2ResourceServer -> oauth2ResourceServer.jwt(Customizer.withDefaults()));
