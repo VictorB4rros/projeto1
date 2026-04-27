@@ -4,16 +4,24 @@ import com.lpg3.projeto1.dto.UserDTO;
 import com.lpg3.projeto1.entities.Role;
 import com.lpg3.projeto1.entities.User;
 import com.lpg3.projeto1.projections.UserDetailsProjection;
+import com.lpg3.projeto1.repositories.RoleRepository;
 import com.lpg3.projeto1.repositories.UserRepository;
+import com.lpg3.projeto1.services.exceptions.DatabaseException;
+import com.lpg3.projeto1.services.exceptions.ResourceNotFoundException;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.lpg3.projeto1.dto.UserInsertDTO;
+import com.lpg3.projeto1.dto.UserUpdateDTO;
 
 import java.util.List;
 
@@ -22,6 +30,13 @@ public class UserService implements UserDetailsService {
 
 	@Autowired
 	private UserRepository repository;
+	
+	@Autowired
+	private RoleRepository roleRepository;
+
+	@Autowired
+	private PasswordEncoder passwordEncoder;
+	
 	
 	@Override
 	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
@@ -55,5 +70,51 @@ public class UserService implements UserDetailsService {
 	public UserDTO getMe() {
 		User user = authenticated();
 		return new UserDTO(user);
+	}
+	
+	@Transactional
+	public UserDTO insert(UserInsertDTO dto) {
+	    if (repository.findByEmail(dto.getEmail()).isPresent()) {
+	        throw new DatabaseException("Email já cadastrado: " + dto.getEmail());
+	    }
+
+	    User user = new User();
+	    user.setName(dto.getName());
+	    user.setEmail(dto.getEmail());
+	    user.setPhone(dto.getPhone());
+	    user.setBirthDate(dto.getBirthDate());
+	    user.setPassword(passwordEncoder.encode(dto.getPassword()));
+
+	    Role role = roleRepository.findByAuthority("ROLE_CLIENT")
+	            .orElseThrow(() -> new ResourceNotFoundException("Role padrão não encontrada"));
+	    user.addRole(role);
+
+	    user = repository.save(user);
+	    return new UserDTO(user);
+	}
+	
+	@Transactional
+	public UserDTO update(Long id, UserUpdateDTO dto) {
+	    User user = repository.findById(id)
+	            .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado: " + id));
+
+	    user.setName(dto.getName());
+	    user.setPhone(dto.getPhone());
+	    user.setBirthDate(dto.getBirthDate());
+
+	    user = repository.save(user);
+	    return new UserDTO(user);
+	}
+
+	@Transactional
+	public void delete(Long id) {
+	    if (!repository.existsById(id)) {
+	        throw new ResourceNotFoundException("Usuário não encontrado: " + id);
+	    }
+	    try {
+	        repository.deleteById(id);
+	    } catch (DataIntegrityViolationException e) {
+	        throw new DatabaseException("Não é possível excluir usuário com vínculos ativos");
+	    }
 	}
 }

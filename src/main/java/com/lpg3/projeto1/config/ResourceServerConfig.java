@@ -58,6 +58,7 @@ public class ResourceServerConfig {
 				.requestMatchers(HttpMethod.GET, "/printers/approve/**").hasRole("ADMIN")
 				.requestMatchers(HttpMethod.PUT, "/printers/**").hasRole("ADMIN")
 				.requestMatchers(HttpMethod.DELETE, "/printers/**").hasRole("ADMIN")
+				.requestMatchers(HttpMethod.POST, "/users").permitAll()
 				
 				.anyRequest().authenticated());
 				
